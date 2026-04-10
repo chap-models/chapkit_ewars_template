@@ -14,7 +14,7 @@ help:
 
 build:
 	@echo ">>> Building $(IMAGE)"
-	@docker build -t $(IMAGE) .
+	@docker build --no-cache -t $(IMAGE) .
 
 run: build
 	@echo ">>> Running $(IMAGE) on :8000"
