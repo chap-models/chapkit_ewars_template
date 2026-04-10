@@ -1,11 +1,16 @@
+# R-INLA is amd64-only, so both stages are pinned to linux/amd64.
+# Exposed as an ARG to keep the Dockerfile portable and silence
+# buildkit's FromPlatformFlagConstDisallowed lint warning.
+ARG BASE_PLATFORM=linux/amd64
+
 # Stage 1: Install Python dependencies
-FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:0.9-python3.13-bookworm-slim AS python-builder
+FROM --platform=${BASE_PLATFORM} ghcr.io/astral-sh/uv:0.11-python3.13-trixie-slim AS python-builder
 WORKDIR /build
 COPY pyproject.toml ./
 RUN uv sync --no-dev
 
 # Stage 2: Runtime with R (INLA) + Python (chapkit)
-FROM --platform=linux/amd64 ghcr.io/dhis2-chap/docker_r_inla:master
+FROM --platform=${BASE_PLATFORM} ghcr.io/dhis2-chap/docker_r_inla:master
 
 # Install Python 3.13
 RUN apt-get update && apt-get install -y --no-install-recommends \
