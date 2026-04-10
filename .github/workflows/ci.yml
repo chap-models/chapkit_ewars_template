@@ -64,7 +64,7 @@ jobs:
       - name: Install deps (incl. dev)
         run: uv sync --all-groups
       - name: Run chapkit test against container
-        run: uv run chapkit test --url http://localhost:8000 --verbose
+        run: uv run chapkit test --url http://localhost:8000 --timeout 180 --verbose
       - name: Container logs on failure
         if: failure()
         run: docker logs chapkit-ci
