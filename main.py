@@ -31,10 +31,11 @@ runner: ShellModelRunner[EwarsConfig] = ShellModelRunner(
 )
 
 info = MLServiceInfo(
-    id="ewars-template",
-    display_name="CHAP-EWARS Model",
+    id="chapkit-ewars-template",
+    display_name="CHAP-EWARS Model (chapkit)",
     version="1.0.0",
     description=(
+        "Chapkit-based version of the CHAP-EWARS model, runnable alongside the legacy EWARS model. "
         "Modified version of the World Health Organization (WHO) EWARS model. "
         "EWARS is a Bayesian hierarchical model implemented with the INLA library."
     ),
