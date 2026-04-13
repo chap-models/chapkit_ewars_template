@@ -47,11 +47,13 @@ chap-core auto-detects chapkit services and drives them over REST — no config 
 
 | What | Where | Current value |
 | --- | --- | --- |
-| Service id | `MLServiceInfo.id` | `ewars-template` |
+| Service id | `MLServiceInfo.id` | `chapkit-ewars-template` |
+| Display name | `MLServiceInfo.display_name` | `CHAP-EWARS Model (chapkit)` |
 | Period type | `MLServiceInfo.period_type` | `monthly` |
 | Required covariates | `MLServiceInfo.required_covariates` | `["population"]` |
 | Free continuous covariates | `allow_free_additional_continuous_covariates` | `True` |
 | Prediction-period bounds | `min/max_prediction_periods` | `0 – 100` |
+| Self-registration | `.with_registration(keepalive_interval=15)` | Registers with chap-core on startup via `SERVICEKIT_ORCHESTRATOR_URL` |
 | Train command | `ShellModelRunner.train_command` | `Rscript scripts/train.R --data {data_file}` |
 | Predict command | `ShellModelRunner.predict_command` | `Rscript scripts/predict.R --historic {historic_file} --future {future_file} --output {output_file}` |
 
@@ -62,6 +64,10 @@ Runtime-tunable config (`EwarsConfig`):
 | `prediction_periods` | `3` | Periods to forecast |
 | `n_lags` | `3` | Lags in the `dlnm` cross-basis |
 | `precision` | `0.01` | Prior precision on fixed effects (regularization) |
+| `region_seasonal` | `false` | Optional inclusion of region specific seasonal effects |
+| `additional_continuous_covariates` | `["rainfall", "mean_temperature"]` | Continuous covariates for the lagged INLA model. Override via `POST /api/v1/configs` for a different covariate set (e.g. `[]` for population-only) |
+
+When `SERVICEKIT_ORCHESTRATOR_URL` is set (e.g. `http://chap:8000/v2/services/$register`), the service auto-registers with chap-core on startup and keeps the registration alive with 15s pings. When unset, registration is skipped and the service runs standalone — useful for `chap eval` or local testing.
 
 Point chap-core at either the GHCR image or a locally-built one; it will handle the train/predict round-trips and surface the posterior samples as the model's output.
 
