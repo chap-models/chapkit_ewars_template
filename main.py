@@ -21,22 +21,20 @@ class EwarsConfig(BaseConfig):
         default=0.01,
         description="Prior on the precision of fixed effects. Works as regularization",
     )
-    # Chapkit's BaseConfig reserves `additional_continuous_covariates: list[str] = []`
-    # as a CHAP-interpreted field. `scripts/predict.R` reads it into `covariate_names`
-    # and wires those columns into `generate_lagged_model`. The legacy MLflow-based
-    # ewars_template got these values from the chap-core `configured_models/default.yaml`
-    # overlay -- there is no equivalent overlay for chapkit self-registered services yet,
-    # so we bake the EWARS default here to stay behaviourally equivalent to the legacy
-    # model. Callers can still override via POST /api/v1/configs.
-    # TODO: remove this default once chap-core can layer per-configured-model user
-    # option values on top of self-registered chapkit services (tracked against the
-    # chapkit-self-registration work in chap-core).
+    # BaseConfig reserves `additional_continuous_covariates` as a CHAP-interpreted
+    # field. scripts/predict.R reads it into `covariate_names` and wires those
+    # columns into `generate_lagged_model`. The default here makes EWARS use
+    # rainfall + mean_temperature out of the box (matching the legacy model).
+    # Deployments that don't have climate data can override per-config via
+    # POST /api/v1/configs with additional_continuous_covariates=[] to run
+    # the population-only variant without forking this repo.
     additional_continuous_covariates: list[str] = Field(
         default_factory=lambda: ["rainfall", "mean_temperature"],
         description=(
             "Continuous covariates to include as lagged predictors in the INLA model. "
             "Defaults match the legacy CHAP-EWARS model which used rainfall and "
-            "mean_temperature."
+            "mean_temperature. Override via POST /api/v1/configs to run with a "
+            "different covariate set."
         ),
     )
 
