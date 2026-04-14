@@ -553,11 +553,12 @@ This is the gate — if `chapkit test` passes, your required migration is done.
 6. Build the container and rerun step 5 against it:
 
    ```
-   docker build -t model:ci .
-   docker run -d --name test -p 8000:8000 model:ci
-   # wait for /health, then:
+   docker compose build
+   docker compose up -d
+   # Wait for the service to be healthy before running tests — may take
+   # 10-30s on slower machines or under emulation (Apple Silicon + amd64).
+   until curl -sf http://localhost:8000/health > /dev/null 2>&1; do sleep 2; done
    chapkit test --url http://localhost:8000 --timeout 180 --verbose
-   docker rm -f test
    ```
 
 When `chapkit test` reports `ALL TESTS PASSED` both locally and against the container, Part A is complete.
