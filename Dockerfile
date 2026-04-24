@@ -3,8 +3,6 @@ ARG BASE_PLATFORM=linux/amd64
 
 FROM --platform=${BASE_PLATFORM} ghcr.io/dhis2-chap/chapkit-r-inla:latest
 
-COPY --from=ghcr.io/astral-sh/uv:0.11 /uv /uvx /usr/local/bin/
-
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
