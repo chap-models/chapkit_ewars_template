@@ -13,9 +13,13 @@ class EwarsConfig(BaseConfig):
         default=3,
         description="Number of periods to predict into the future",
     )
-    n_lags: int = Field(
-        default=3,
-        description="Number of lags to include in the model",
+    n_lags: list[int] = Field(
+        default_factory=lambda: [3],
+        description=(
+            "Number of lags per covariate, in the same order as "
+            "additional_continuous_covariates. A single-element list "
+            "broadcasts to all covariates."
+        ),
     )
     precision: float = Field(
         default=0.01,
