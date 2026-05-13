@@ -5,7 +5,7 @@ from chapkit import BaseConfig
 from chapkit.api import AssessedStatus, MLServiceBuilder, MLServiceInfo, ModelMetadata, PeriodType
 from chapkit.artifact import ArtifactHierarchy
 from chapkit.ml import ShellModelRunner
-from pydantic import Field, field_validator
+from pydantic import Field
 
 
 class EwarsConfig(BaseConfig):
@@ -17,21 +17,10 @@ class EwarsConfig(BaseConfig):
         default_factory=lambda: [3],
         description=(
             "Number of lags per covariate, in the same order as "
-            "additional_continuous_covariates. A single integer broadcasts to "
-            "all covariates."
+            "additional_continuous_covariates. A single-element list "
+            "broadcasts to all covariates."
         ),
     )
-
-    @field_validator("n_lags", mode="before")
-    @classmethod
-    def _scalar_to_list(cls, v: object) -> object:
-        # Mirror upstream MLproject schema `type: [array, integer]` so clients
-        # may pass either `n_lags: 3` or `n_lags: [3, 6]`. R-side already
-        # broadcasts a length-1 vector across all covariates.
-        if isinstance(v, int) and not isinstance(v, bool):
-            return [v]
-        return v
-
     precision: float = Field(
         default=0.01,
         description="Prior on the precision of fixed effects. Works as regularization",
