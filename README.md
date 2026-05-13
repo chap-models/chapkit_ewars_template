@@ -62,9 +62,9 @@ Runtime-tunable config (`EwarsConfig`):
 | Field | Default | Description |
 | --- | --- | --- |
 | `prediction_periods` | `3` | Periods to forecast |
-| `n_lags` | `3` | Lags in the `dlnm` cross-basis |
+| `n_lags` | `[3]` | Lags per covariate in the `dlnm` cross-basis, in the same order as `additional_continuous_covariates`. A single-element list broadcasts to all covariates (`[3, 6]` would give rainfall 3 lags and mean_temperature 6). |
 | `precision` | `0.01` | Prior precision on fixed effects (regularization) |
-| `region_seasonal` | `false` | Optional inclusion of region specific seasonal effects |
+| `region_seasonal` | `false` | Add a region-specific cyclic RW1 seasonal effect (`f(ID_time_cyclic2, ..., replicate=ID_spat)`) on top of the global seasonal trend |
 | `additional_continuous_covariates` | `["rainfall", "mean_temperature"]` | Continuous covariates for the lagged INLA model. Override via `POST /api/v1/configs` for a different covariate set (e.g. `[]` for population-only) |
 
 When `SERVICEKIT_ORCHESTRATOR_URL` is set (e.g. `http://chap:8000/v2/services/$register`), the service auto-registers with chap-core on startup and keeps the registration alive with 15s pings. When unset, registration is skipped and the service runs standalone — useful for `chap eval` or local testing.
@@ -99,23 +99,21 @@ The derived columns the model code uses internally (`Cases`, `E`, `ID_spat`, `ID
 
 ## Model
 
-Negative-binomial INLA with an `iid` spatial random effect on `ID_spat`, an RW1 temporal trend, a cyclic RW1 on `ID_time_cyclic` (week or month), and `dlnm` cross-basis splines for lagged `rainsum` and `meantemperature`. `population` enters as a log offset. The fit runs in [`scripts/predict.R`](scripts/predict.R); [`scripts/train.R`](scripts/train.R) is a placeholder because the INLA fit needs the combined historic+future frame available at predict time.
+Negative-binomial INLA with an `iid` spatial random effect on `ID_spat` (replicated by `ID_year`), a cyclic RW1 on `ID_time_cyclic` (week or month), and `dlnm` cross-basis splines for the lagged covariates listed in `additional_continuous_covariates` (default: rainfall and mean_temperature). `population` enters as a log offset. With `region_seasonal=true`, the formula gains a second cyclic RW1 on `ID_time_cyclic2` replicated by `ID_spat`, giving each location its own seasonal shape. The fit runs in [`scripts/predict.R`](scripts/predict.R); [`scripts/train.R`](scripts/train.R) is a placeholder because the INLA fit needs the combined historic+future frame available at predict time.
 
-**Weekly vs. monthly** — the only thing that changes between the two is the lag window and the cyclic index:
+**Weekly vs. monthly** — the model picks weekly or monthly cyclic offsets based on which column is present:
 
 ```r
 if ("week" %in% colnames(df)) {
-  nlag <- 12                                 # ~3 months of weekly lags
   df <- mutate(df, ID_time_cyclic = week)
   df <- offset_years_and_weeks(df)
 } else {
-  nlag <- 3                                  # ~3 months of monthly lags
   df <- mutate(df, ID_time_cyclic = month)
   df <- offset_years_and_months(df)
 }
 ```
 
-Weekly data lives in `example_data/`, monthly in `example_data_monthly/`.
+Lag depth comes from `n_lags` in the config (per-covariate or broadcast from a single-element list), not from the weekly/monthly branch. Weekly data lives in `example_data/`, monthly in `example_data_monthly/`.
 
 ## Repository layout
 

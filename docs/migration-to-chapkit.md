@@ -179,9 +179,13 @@ class EwarsConfig(BaseConfig):
         default=3,
         description="Number of periods to predict into the future",
     )
-    n_lags: int = Field(
-        default=3,
-        description="Number of lags to include in the model",
+    n_lags: list[int] = Field(
+        default_factory=lambda: [3],
+        description=(
+            "Number of lags per covariate, in the same order as "
+            "additional_continuous_covariates. A single-element list "
+            "broadcasts to all covariates."
+        ),
     )
     precision: float = Field(
         default=0.01,
@@ -344,7 +348,7 @@ if (is.null(data_file)) {
 
 ### A.4.2 Read `config.yml` from the working directory
 
-Chapkit serializes the validated Pydantic config instance to `config.yml` as flat YAML before running your script. Keys map 1:1 to your `BaseConfig` field names, so `n_lags: 3` reads back as `config$n_lags` in R. See `scripts/predict.R:29-47`:
+Chapkit serializes the validated Pydantic config instance to `config.yml` as flat YAML before running your script. Keys map 1:1 to your `BaseConfig` field names, so `n_lags: [3]` reads back as `config$n_lags` in R. See `scripts/predict.R:32-53`:
 
 ```r
 parse_config <- function(config_path) {
@@ -352,6 +356,7 @@ parse_config <- function(config_path) {
     return(list(
       n_lags = 3,
       precision = 0.01,
+      region_seasonal = FALSE,
       additional_continuous_covariates = character()
     ))
   }
@@ -359,6 +364,7 @@ parse_config <- function(config_path) {
   list(
     n_lags = if (!is.null(config$n_lags)) config$n_lags else 3,
     precision = if (!is.null(config$precision)) config$precision else 0.01,
+    region_seasonal = if (!is.null(config$region_seasonal)) config$region_seasonal else FALSE,
     additional_continuous_covariates = if (!is.null(config$additional_continuous_covariates)) {
       config$additional_continuous_covariates
     } else {
@@ -372,27 +378,27 @@ Always provide sane fallbacks — if chapkit ever invokes the script directly wi
 
 ### A.4.3 Apply a column adapter
 
-CHAP speaks canonical column names (`disease_cases`, `population`, `location`, `year`) but your existing model code probably speaks something else (`Cases`, `E`, `ID_spat`, `ID_year`). Rather than rewrite the model, add a thin rename layer at the top of `predict.R`. See `scripts/predict.R:12-26`:
+CHAP speaks canonical column names (`disease_cases`, `population`, `location`, `year`) but your existing model code probably speaks something else (`Cases`, `E`, `ID_spat`, `ID_year`). Rather than rewrite the model, add a thin alias layer at the top of `predict.R` that **copies** the canonical columns under the internal names so both coexist. See `scripts/predict.R:11-30`:
 
 ```r
 apply_adapters <- function(df) {
-  rename_map <- c(
+  alias_map <- c(
     "disease_cases" = "Cases",
     "population" = "E",
     "location" = "ID_spat",
     "year" = "ID_year"
   )
-  for (from in names(rename_map)) {
-    to <- rename_map[[from]]
+  for (from in names(alias_map)) {
+    to <- alias_map[[from]]
     if (from %in% colnames(df) && !(to %in% colnames(df))) {
-      names(df)[names(df) == from] <- to
+      df[[to]] <- df[[from]]
     }
   }
   return(df)
 }
 ```
 
-Call `apply_adapters()` on every dataframe you read from `{historic_file}` or `{future_file}`. Your existing modeling code stays untouched below that line.
+Call `apply_adapters()` on every dataframe you read from `{historic_file}` or `{future_file}`. Your existing modeling code stays untouched below that line. Copying rather than renaming matters when the output needs the canonical name (e.g. `location` strings for the predictions CSV) while internal logic uses the alias (`ID_spat` as an integer factor index for INLA's `replicate=` argument).
 
 ### A.4.4 Handle training as a no-op (when applicable)
 
